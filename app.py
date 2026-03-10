@@ -1,4 +1,3 @@
-
 import json
 import os
 import re
@@ -22,7 +21,7 @@ from services.postprocess import normalize_text, split_title_and_body
 
 load_dotenv()
 
-st.set_page_config(page_title="블로그 자동 글쓰기", page_icon="✨", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="블로그 반자동 글쓰기", page_icon="✨", layout="wide", initial_sidebar_state="collapsed")
 
 SNIPPET_FILE = Path("saved_common_snippets.json")
 NAVER_DATALAB_URL = "https://openapi.naver.com/v1/datalab/search"
@@ -210,11 +209,12 @@ def build_effective_sub_keywords(platform_value=None):
 def build_effective_extra_instruction(platform_value=None):
     platform_value = platform_value or st.session_state.get("platform", "")
     tone_map = {
-        "전문가형": "문장은 신뢰감 있고 정돈된 격식체로 작성한다.",
-        "30대여성형": "문장은 자연스럽고 세련된 30대 여성 말투처럼 공감 가게 작성한다.",
-        "30대남성형": "문장은 담백하고 현실적인 30대 남성 말투처럼 직관적으로 작성한다.",
-        "정중한말투": "문장은 공손하고 안정적인 존댓말 위주로 작성한다.",
-        "반말": "문장은 자연스러운 반말로 작성하되 너무 거칠지 않게 친근하게 쓴다.",
+        "전문해설형(아나운서)": "문장은 또렷하고 안정적인 전달력으로, 아나운서처럼 정돈된 말투로 작성한다.",
+        "3040대 밝은 여성형": "문장은 밝고 호감 있게, 3040대 여성 화자처럼 자연스럽고 친근하게 작성한다.",
+        "3040대 밝은 남성형": "문장은 밝고 편안하게, 3040대 남성 화자처럼 현실감 있게 작성한다.",
+        "20대형": "문장은 20대 화자처럼 가볍고 친근하게 작성하되, ㅎㅎ, ㅋㅋ, ~했어용 같은 표현을 자연스럽게 섞는다.",
+        "친구형": "문장은 친구에게 이야기하듯 편안하고 부담 없이 작성한다.",
+        "정중상담형": "문장은 상담하듯 친절하고 공손한 존댓말 위주로 작성한다.",
     }
     version_rule = "PC 버전이므로 문단 흐름은 비교적 길게 유지한다." if st.session_state.get("version_type") == "PC 버전" else "모바일 버전이므로 문단을 짧게 끊는다."
     instructions = [
@@ -300,9 +300,9 @@ button[kind="secondary"] { border-radius: 14px !important; }
 """, unsafe_allow_html=True)
 
 DEFAULTS = {
-    "page_step": "1. 입력", "category": "육아/자녀교육", "keyword": "", "sub_keywords": "",
+    "page_step": "1. 입력", "category": "부동산/건축", "keyword": "", "sub_keywords": "",
     "direction_text": "", "exclude_text": "", "platform": "네이버블로그", "version_type": "PC 버전",
-    "tone_style": "전문가형", "purpose": "후기형", "length": 2500, "subtitle_count": 3,
+    "tone_style": "전문해설형(아나운서)", "purpose": "정보전달형", "length": 2500, "subtitle_count": 3,
     "hashtag_count": 10, "extra_instruction": "과장하지 말고 자연스럽게 써줘. 본문에 해시태그 넣지 말고 글만 깔끔하게 써줘.",
     "title_candidates": "", "title_choice_idx": 1, "selected_title": "", "outline_text": "",
     "article_raw": "", "article_title": "", "article_body": "", "common_snippet_name": "",
@@ -318,12 +318,12 @@ for k, v in DEFAULTS.items():
 
 steps = ["1. 입력", "2. 제목/기획안", "3. 본문"]
 category_options = ["부동산/건축","법률/세무","의료/건강","뷰티/패션","IT/기술","음식점/맛집","교육/학원","금융/투자","여행/레저","인테리어/리빙","육아/자녀교육","반려동물","자동차","쇼핑몰/제품리뷰","기타"]
-tone_options = ["전문가형", "30대여성형", "30대남성형", "정중한말투", "반말"]
+tone_options = ["전문해설형(아나운서)", "3040대 밝은 여성형", "3040대 밝은 남성형", "20대형", "친구형", "정중상담형"]
 
 st.markdown(f"""
 <div class="hero-box">
-    <div class="hero-title">블로그 자동 글쓰기</div>
-    <div class="hero-sub">기존 기능 유지 + 네이버 데이터랩 키워드 검색 추가 · 모델 {MODEL}</div>
+    <div class="hero-title">블로그 반자동 글쓰기</div>
+    <div class="hero-sub">추천 버전 · {datetime.now().strftime("%Y-%m-%d")}</div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -339,24 +339,36 @@ if st.session_state["page_step"] == "1. 입력":
     left, right = st.columns([1.12, 0.88], gap="large")
     with left:
         st.markdown('<div class="soft-card">', unsafe_allow_html=True)
-        category = st.selectbox("주제/업종", category_options, index=category_options.index(st.session_state["category"]))
-        keyword = st.text_input("메인키워드", value=st.session_state["keyword"])
+        category = st.selectbox("📌 필수 주제/업종", category_options, index=category_options.index(st.session_state["category"]))
+        keyword = st.text_input("📌 필수 메인키워드", value=st.session_state["keyword"])
         sub_keywords = st.text_input("서브키워드", value=st.session_state["sub_keywords"])
         direction_text = st.text_area("강조할 내용", value=st.session_state["direction_text"], height=90)
         exclude_text = st.text_area("제외할 내용", value=st.session_state["exclude_text"], height=80)
         a1, a2 = st.columns(2)
         with a1:
-            platform = st.selectbox("기본 플랫폼 선택", ["네이버블로그", "티스토리"], index=["네이버블로그", "티스토리"].index(st.session_state["platform"]))
             version_type = st.radio("버전 선택", ["PC 버전", "모바일 버전"], index=["PC 버전", "모바일 버전"].index(st.session_state["version_type"]), horizontal=True)
             length = st.selectbox("목표 글자수", [1500, 2000, 2500, 3000, 3500, 4000, 5000], index=[1500, 2000, 2500, 3000, 3500, 4000, 5000].index(st.session_state["length"]))
         with a2:
-            purpose = st.selectbox("목적", ["정보형", "후기형", "상담유도형"], index=["정보형", "후기형", "상담유도형"].index(st.session_state["purpose"]))
+            purpose = st.selectbox("목적", ["정보전달형", "체험형", "상품후기형", "상담전환용"], index=["정보전달형", "체험형", "상품후기형", "상담전환용"].index(st.session_state["purpose"]))
             subtitle_count = st.selectbox("소주제 개수", [3, 4, 5, 6, 7, 8], index=[3, 4, 5, 6, 7, 8].index(st.session_state["subtitle_count"]))
             hashtag_count = st.selectbox("해시태그 개수", [5, 8, 10, 12], index=[5, 8, 10, 12].index(st.session_state["hashtag_count"]))
         tone_style = st.selectbox("말투", tone_options, index=tone_options.index(st.session_state["tone_style"]))
         extra_instruction = st.text_area("추가 요청", value=st.session_state["extra_instruction"], height=110)
         if st.button("입력정보 적용", use_container_width=True, type="primary"):
-            set_and_refresh(category=category, keyword=keyword, sub_keywords=sub_keywords, direction_text=direction_text, exclude_text=exclude_text, platform=platform, version_type=version_type, length=length, purpose=purpose, subtitle_count=subtitle_count, hashtag_count=hashtag_count, tone_style=tone_style, extra_instruction=extra_instruction)
+            set_and_refresh(
+                category=category,
+                keyword=keyword,
+                sub_keywords=sub_keywords,
+                direction_text=direction_text,
+                exclude_text=exclude_text,
+                version_type=version_type,
+                length=length,
+                purpose=purpose,
+                subtitle_count=subtitle_count,
+                hashtag_count=hashtag_count,
+                tone_style=tone_style,
+                extra_instruction=extra_instruction,
+            )
         st.markdown('</div>', unsafe_allow_html=True)
 
         st.markdown('<div class="soft-card">', unsafe_allow_html=True)
@@ -405,7 +417,7 @@ if st.session_state["page_step"] == "1. 입력":
             st.text_input("메인키워드 관심도", value=st.session_state.get("keyword_interest_label", ""), disabled=True)
 
         st.markdown('<div class="section-sub">추천 키워드 10개</div>', unsafe_allow_html=True)
-        if st.button("추천키워드 새로받기", use_container_width=True):
+        if st.button("🔁 추천 키워드받기", use_container_width=True):
             try:
                 suggestions = generate_keyword_suggestions(
                     st.session_state["keyword"],
@@ -419,39 +431,37 @@ if st.session_state["page_step"] == "1. 입력":
         recommended_text = ", ".join(st.session_state.get("recommended_keywords", []))
         st.text_area("추천 키워드", value=recommended_text, height=180, disabled=True)
 
-        action_cols = st.columns(2)
-        with action_cols[0]:
-            st.text_input("추가 키워드 검색", value=st.session_state["search_keyword_input"], key="search_keyword_input")
-        with action_cols[1]:
+        search_keyword_input = st.text_input("추가 키워드 검색", value=st.session_state["search_keyword_input"])
+        k1, k2 = st.columns(2)
+        with k1:
             if st.button("키워드 적용하기", use_container_width=True):
-                suggestions = st.session_state.get("recommended_keywords", [])
-                if not suggestions:
-                    st.warning("먼저 추천키워드를 받아오세요.")
-                else:
-                    merged = []
-                    current = [x.strip() for x in st.session_state.get("sub_keywords", "").split(",") if x.strip()]
-                    for kw in current + suggestions:
-                        if kw not in merged:
-                            merged.append(kw)
-                    set_and_refresh(sub_keywords=", ".join(merged))
-
-        st.markdown('</div>', unsafe_allow_html=True)
-
-        st.markdown('<div class="soft-card">', unsafe_allow_html=True)
-        st.text_area("입력 정보 확인", value=build_structured_brief(), height=250, disabled=True)
-        if st.button("2. 제목/기획안 단계로 이동", use_container_width=True):
-            set_and_refresh(page_step="2. 제목/기획안")
+                current = [x.strip() for x in st.session_state["sub_keywords"].split(",") if x.strip()]
+                recommended = st.session_state.get("recommended_keywords", [])
+                merged = current[:]
+                for kw in recommended:
+                    if kw not in merged:
+                        merged.append(kw)
+                set_and_refresh(sub_keywords=", ".join(merged))
+        with k2:
+            if st.button("입력정보에 반영", use_container_width=True):
+                set_and_refresh(search_keyword_input=search_keyword_input)
         st.markdown('</div>', unsafe_allow_html=True)
 
 elif st.session_state["page_step"] == "2. 제목/기획안":
-    col1, col2 = st.columns([1.07, 0.93], gap="large")
+    col1, col2 = st.columns([1, 1], gap="large")
     with col1:
         st.markdown('<div class="soft-card">', unsafe_allow_html=True)
-        if st.button("제목 후보 생성", use_container_width=True):
+        if st.button("추천 제목 생성", use_container_width=True):
             try:
-                title_prompt_keyword = st.session_state["keyword"] or st.session_state["category"]
-                title_prompt_sub = build_effective_sub_keywords() + " / " + get_platform_rules(st.session_state["platform"])
-                generated = normalize_text(generate_text(build_title_prompt(title_prompt_keyword, title_prompt_sub, st.session_state["platform"], st.session_state["tone_style"], st.session_state["purpose"])))
+                prompt = build_title_prompt(
+                    keyword=st.session_state["keyword"] or st.session_state["category"],
+                    sub_keywords=build_effective_sub_keywords(),
+                    platform=st.session_state["platform"],
+                    tone=st.session_state["tone_style"],
+                    purpose=st.session_state["purpose"],
+                    extra_instruction=build_effective_extra_instruction(),
+                )
+                generated = normalize_text(generate_text(prompt))
                 parsed = parse_title_candidates(generated)
                 selected = parsed[0] if parsed else ""
                 set_and_refresh(title_candidates=generated, title_choice_idx=1, selected_title=selected)
@@ -459,7 +469,7 @@ elif st.session_state["page_step"] == "2. 제목/기획안":
                 st.error(f"제목 후보 생성 오류: {e}")
         parsed_titles = parse_title_candidates(st.session_state["title_candidates"])
         options = [f"{idx}. {title}" for idx, title in enumerate(parsed_titles, start=1)]
-        st.text_area("제목 후보", value="\\n".join(options) if options else st.session_state["title_candidates"], height=230, disabled=True)
+        st.text_area("제목 후보", value="\n".join(options) if options else st.session_state["title_candidates"], height=230, disabled=True)
         if options:
             selected_option = st.selectbox("제목 번호 선택", options, index=max(0, min(len(options), st.session_state["title_choice_idx"]) - 1))
             selected_idx = options.index(selected_option) + 1
@@ -472,36 +482,75 @@ elif st.session_state["page_step"] == "2. 제목/기획안":
         if st.button("기획안 생성", use_container_width=True):
             try:
                 title_for_outline = st.session_state["selected_title"].strip() or (st.session_state["keyword"].strip() or st.session_state["category"])
-                prompt = build_outline_prompt(keyword=st.session_state["keyword"] or st.session_state["category"], sub_keywords=build_effective_sub_keywords(), platform=st.session_state["platform"], tone=st.session_state["tone_style"], purpose=st.session_state["purpose"], selected_title=title_for_outline, extra_instruction=build_effective_extra_instruction())
+                prompt = build_outline_prompt(
+                    keyword=st.session_state["keyword"] or st.session_state["category"],
+                    sub_keywords=build_effective_sub_keywords(),
+                    platform=st.session_state["platform"],
+                    tone=st.session_state["tone_style"],
+                    purpose=st.session_state["purpose"],
+                    selected_title=title_for_outline,
+                    extra_instruction=build_effective_extra_instruction(),
+                )
                 set_and_refresh(outline_text=normalize_text(generate_text(prompt)))
             except Exception as e:
                 st.error(f"기획안 생성 오류: {e}")
         st.text_area("기획안 결과", value=st.session_state["outline_text"], height=330, disabled=True)
+        if st.button("본문 작성하러 가기", use_container_width=True):
+            set_and_refresh(page_step="3. 본문")
         st.markdown('</div>', unsafe_allow_html=True)
 
 elif st.session_state["page_step"] == "3. 본문":
     st.markdown('<div class="soft-card">', unsafe_allow_html=True)
-    st.markdown('<div class="section-sub">글이 늦게 뜨는 이유는 Streamlit 재실행 구조와 상태 저장 타이밍 문제였습니다. 이 버전은 생성 직후 session_state 저장 후 즉시 rerun 하도록 정리했습니다.</div>', unsafe_allow_html=True)
     c1, c2, c3 = st.columns(3)
     with c1:
-        if st.button("네이버/티스토리 비교 생성", use_container_width=True):
+        if st.button("글생성", use_container_width=True):
             try:
                 title_for_article = st.session_state["selected_title"].strip() or (st.session_state["keyword"].strip() or st.session_state["category"])
-                naver_prompt = build_article_prompt(st.session_state["keyword"] or st.session_state["category"], build_effective_sub_keywords("네이버블로그"), "네이버블로그", st.session_state["tone_style"], st.session_state["purpose"], st.session_state["length"], title_for_article, st.session_state["outline_text"], build_effective_extra_instruction("네이버블로그"))
+                naver_prompt = build_article_prompt(
+                    st.session_state["keyword"] or st.session_state["category"],
+                    build_effective_sub_keywords("네이버블로그"),
+                    "네이버블로그",
+                    st.session_state["tone_style"],
+                    st.session_state["purpose"],
+                    st.session_state["length"],
+                    title_for_article,
+                    st.session_state["outline_text"],
+                    build_effective_extra_instruction("네이버블로그"),
+                )
                 naver_article = normalize_text(generate_text(naver_prompt))
                 naver_title, naver_body = split_title_and_body(naver_article)
-                tistory_prompt = build_article_prompt(st.session_state["keyword"] or st.session_state["category"], build_effective_sub_keywords("티스토리"), "티스토리", st.session_state["tone_style"], st.session_state["purpose"], st.session_state["length"], title_for_article, st.session_state["outline_text"], build_effective_extra_instruction("티스토리"))
+
+                tistory_prompt = build_article_prompt(
+                    st.session_state["keyword"] or st.session_state["category"],
+                    build_effective_sub_keywords("티스토리"),
+                    "티스토리",
+                    st.session_state["tone_style"],
+                    st.session_state["purpose"],
+                    st.session_state["length"],
+                    title_for_article,
+                    st.session_state["outline_text"],
+                    build_effective_extra_instruction("티스토리"),
+                )
                 tistory_article = normalize_text(generate_text(tistory_prompt))
                 tistory_title, tistory_body = split_title_and_body(tistory_article)
-                set_and_refresh(naver_article_title=naver_title, naver_article_body=naver_body, tistory_article_title=tistory_title, tistory_article_body=tistory_body, article_raw=naver_article, article_title=naver_title, article_body=naver_body)
+
+                set_and_refresh(
+                    naver_article_title=naver_title,
+                    naver_article_body=naver_body,
+                    tistory_article_title=tistory_title,
+                    tistory_article_body=tistory_body,
+                    article_raw=naver_article,
+                    article_title=naver_title,
+                    article_body=naver_body,
+                )
             except Exception as e:
                 st.error(f"비교 글 생성 오류: {e}")
     with c2:
         if st.button("네이버 다시쓰기", use_container_width=True):
             try:
-                source = (st.session_state["naver_article_title"] + "\\n\\n" + st.session_state["naver_article_body"]).strip()
+                source = (st.session_state["naver_article_title"] + "\n\n" + st.session_state["naver_article_body"]).strip()
                 if not source:
-                    st.warning("먼저 비교 생성을 하세요.")
+                    st.warning("먼저 글생성을 하세요.")
                 else:
                     prompt = build_rewrite_prompt(source, st.session_state["tone_style"], st.session_state["purpose"], build_effective_extra_instruction("네이버블로그"))
                     article = normalize_text(generate_text(prompt))
@@ -512,9 +561,9 @@ elif st.session_state["page_step"] == "3. 본문":
     with c3:
         if st.button("티스토리 다시쓰기", use_container_width=True):
             try:
-                source = (st.session_state["tistory_article_title"] + "\\n\\n" + st.session_state["tistory_article_body"]).strip()
+                source = (st.session_state["tistory_article_title"] + "\n\n" + st.session_state["tistory_article_body"]).strip()
                 if not source:
-                    st.warning("먼저 비교 생성을 하세요.")
+                    st.warning("먼저 글생성을 하세요.")
                 else:
                     prompt = build_rewrite_prompt(source, st.session_state["tone_style"], st.session_state["purpose"], build_effective_extra_instruction("티스토리"))
                     article = normalize_text(generate_text(prompt))
@@ -525,52 +574,84 @@ elif st.session_state["page_step"] == "3. 본문":
 
     left, right = st.columns(2, gap="large")
     with left:
-        naver_preview = format_text_for_preview(st.session_state["naver_article_title"], st.session_state["naver_article_body"], st.session_state["applied_common_text"], st.session_state["naver_hashtags_text"], st.session_state["naver_image_prompts_text"])
+        naver_preview = format_text_for_preview(
+            st.session_state["naver_article_title"],
+            st.session_state["naver_article_body"],
+            st.session_state["applied_common_text"],
+            st.session_state["naver_hashtags_text"],
+            st.session_state["naver_image_prompts_text"],
+        )
         st.text_area("네이버 블로그 글", value=naver_preview, height=620)
-        n1, n2, n3 = st.columns(3)
+        n1, n2 = st.columns(2)
         with n1:
             if st.button("네이버 해시태그 생성", use_container_width=True):
                 try:
-                    source = (st.session_state["naver_article_title"] + "\\n\\n" + st.session_state["naver_article_body"]).strip()
+                    source = (st.session_state["naver_article_title"] + "\n\n" + st.session_state["naver_article_body"]).strip()
                     if source:
-                        prompt = build_hashtag_prompt(st.session_state["keyword"] or st.session_state["category"], build_effective_sub_keywords("네이버블로그"), source, st.session_state["hashtag_count"])
+                        prompt = build_hashtag_prompt(
+                            st.session_state["keyword"] or st.session_state["category"],
+                            build_effective_sub_keywords("네이버블로그"),
+                            source,
+                            st.session_state["hashtag_count"],
+                        )
                         set_and_refresh(naver_hashtags_text=normalize_text(generate_text(prompt)))
                 except Exception as e:
                     st.error(f"네이버 해시태그 생성 오류: {e}")
         with n2:
-            if st.button("네이버 이미지 프롬프트", use_container_width=True):
-                try:
-                    if st.session_state["naver_article_body"].strip():
-                        set_and_refresh(naver_image_prompts_text=generate_image_prompts_from_body(st.session_state["naver_article_title"], st.session_state["naver_article_body"]))
-                except Exception as e:
-                    st.error(f"네이버 이미지 프롬프트 오류: {e}")
-        with n3:
-            naver_output = build_article_with_images(st.session_state["naver_article_title"], st.session_state["naver_article_body"], st.session_state["naver_image_prompts_text"], st.session_state["applied_common_text"], st.session_state["naver_hashtags_text"])
-            st.download_button("네이버 TXT 저장", data=wrap_preview_text(naver_output, width=38), file_name=f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{safe_filename(st.session_state['naver_article_title'] or st.session_state['keyword'])}_naver.txt", mime="text/plain", use_container_width=True)
+            naver_output = build_article_with_images(
+                st.session_state["naver_article_title"],
+                st.session_state["naver_article_body"],
+                st.session_state["naver_image_prompts_text"],
+                st.session_state["applied_common_text"],
+                st.session_state["naver_hashtags_text"],
+            )
+            st.download_button(
+                "네이버 TXT 저장",
+                data=wrap_preview_text(naver_output, width=38),
+                file_name=f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{safe_filename(st.session_state['naver_article_title'] or st.session_state['keyword'])}_naver.txt",
+                mime="text/plain",
+                use_container_width=True,
+            )
 
     with right:
-        tistory_preview = format_text_for_preview(st.session_state["tistory_article_title"], st.session_state["tistory_article_body"], st.session_state["applied_common_text"], st.session_state["tistory_hashtags_text"], st.session_state["tistory_image_prompts_text"])
+        tistory_preview = format_text_for_preview(
+            st.session_state["tistory_article_title"],
+            st.session_state["tistory_article_body"],
+            st.session_state["applied_common_text"],
+            st.session_state["tistory_hashtags_text"],
+            st.session_state["tistory_image_prompts_text"],
+        )
         st.text_area("티스토리 글", value=tistory_preview, height=620)
-        t1, t2, t3 = st.columns(3)
+        t1, t2 = st.columns(2)
         with t1:
             if st.button("티스토리 해시태그 생성", use_container_width=True):
                 try:
-                    source = (st.session_state["tistory_article_title"] + "\\n\\n" + st.session_state["tistory_article_body"]).strip()
+                    source = (st.session_state["tistory_article_title"] + "\n\n" + st.session_state["tistory_article_body"]).strip()
                     if source:
-                        prompt = build_hashtag_prompt(st.session_state["keyword"] or st.session_state["category"], build_effective_sub_keywords("티스토리"), source, st.session_state["hashtag_count"])
+                        prompt = build_hashtag_prompt(
+                            st.session_state["keyword"] or st.session_state["category"],
+                            build_effective_sub_keywords("티스토리"),
+                            source,
+                            st.session_state["hashtag_count"],
+                        )
                         set_and_refresh(tistory_hashtags_text=normalize_text(generate_text(prompt)))
                 except Exception as e:
                     st.error(f"티스토리 해시태그 생성 오류: {e}")
         with t2:
-            if st.button("티스토리 이미지 프롬프트", use_container_width=True):
-                try:
-                    if st.session_state["tistory_article_body"].strip():
-                        set_and_refresh(tistory_image_prompts_text=generate_image_prompts_from_body(st.session_state["tistory_article_title"], st.session_state["tistory_article_body"]))
-                except Exception as e:
-                    st.error(f"티스토리 이미지 프롬프트 오류: {e}")
-        with t3:
-            tistory_output = build_article_with_images(st.session_state["tistory_article_title"], st.session_state["tistory_article_body"], st.session_state["tistory_image_prompts_text"], st.session_state["applied_common_text"], st.session_state["tistory_hashtags_text"])
-            st.download_button("티스토리 TXT 저장", data=wrap_preview_text(tistory_output, width=38), file_name=f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{safe_filename(st.session_state['tistory_article_title'] or st.session_state['keyword'])}_tistory.txt", mime="text/plain", use_container_width=True)
+            tistory_output = build_article_with_images(
+                st.session_state["tistory_article_title"],
+                st.session_state["tistory_article_body"],
+                st.session_state["tistory_image_prompts_text"],
+                st.session_state["applied_common_text"],
+                st.session_state["tistory_hashtags_text"],
+            )
+            st.download_button(
+                "티스토리 TXT 저장",
+                data=wrap_preview_text(tistory_output, width=38),
+                file_name=f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{safe_filename(st.session_state['tistory_article_title'] or st.session_state['keyword'])}_tistory.txt",
+                mime="text/plain",
+                use_container_width=True,
+            )
     st.markdown('</div>', unsafe_allow_html=True)
 
-st.markdown('<div class="footer-note">현재 버전: 통파일 · 적용 버튼 · 메인키워드 관심도 · 추천키워드 10개 · 말투 변경</div>', unsafe_allow_html=True)
+st.markdown('<div class="footer-note">현재 버전: 추천 버전 · 반자동 글쓰기 · 메인키워드 관심도 · 추천 키워드</div>', unsafe_allow_html=True)
